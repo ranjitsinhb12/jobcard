@@ -22,9 +22,9 @@ connectDB()
 })
 
 
-//  sequelise.sync({alter: true}).then((data)=>{
+//   sequelise.sync({alter: true}).then((data)=>{
 //      console.log("Tabel and model synced successfully")
 //  })
-//  .catch((err)=>{
-//      console.log("Error syncing the table and model", err)
-//  })
+//   .catch((err)=>{
+//       console.log("Error syncing the table and model", err)
+//   })

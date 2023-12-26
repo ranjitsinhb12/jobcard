@@ -1,6 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
-import { User, UserLocation } from "../models/user.model.js";
+import { User, UserLocation, Roles } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
@@ -9,7 +9,7 @@ import bcrypt from "bcrypt"
 
 
 const registerUser = asyncHandler(async (req, res) =>{
-    const { FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId} = req.body
+    const { FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId, RoleId} = req.body
 
     if(
         [FullName, UserMobile, UserEmail, UserName, UserPassword].some((field)=> field.trim() === ""
@@ -39,9 +39,9 @@ const registerUser = asyncHandler(async (req, res) =>{
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
-    if(!avatar){
-        throw new ApiError(400, "Avatar image is required!")
-    }
+     if(!avatar){
+         throw new ApiError(400, "Avatar image is required!")
+     }
 
     const hashUserPassword = await bcrypt.hash(UserPassword, 10)
 
@@ -51,10 +51,11 @@ const registerUser = asyncHandler(async (req, res) =>{
         UserMobile,
         UserEmail: UserEmail.toLowerCase(),
         UserName: UserName.toLowerCase(),
-        UserPassword: hashUserPassword
+        UserPassword: hashUserPassword,
+        RoleId
 
     })
-    
+
 
     const userLocation = await UserLocation.create({
         UserId: user.UserId,
@@ -82,4 +83,35 @@ const registerUser = asyncHandler(async (req, res) =>{
     ) 
 })
 
-export {registerUser}
+const addRole = asyncHandler(async (req, res) => {
+    
+    const { RoleName } =  req.body
+    
+    if(RoleName === "" || RoleName === undefined || RoleName === null){
+        throw new ApiError(400, "Role Name is required!")
+    }
+
+    const existedRole = await Roles.findOne({where: {RoleName: RoleName}})
+
+    if(existedRole){
+        throw new ApiError(400, "Role already available!")
+    }
+
+    const role = await Roles.create({
+        RoleName: RoleName.toLowerCase(),
+    })
+
+    const createRole = Roles.findByPk(role.RoleId)
+
+    if(!createRole){
+        throw new ApiError(500, "Some error happen while creating role!")
+    }
+
+    return res.status(201).json(
+        new ApiResponse(200, createRole, "Role added successfully")
+    )
+
+
+})
+
+export {registerUser, addRole}

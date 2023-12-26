@@ -85,6 +85,20 @@ const UserLocation = sequelise.define("UserLocation",{
     }
 },{timestamps: false})
 
+const Roles = sequelise.define("Roles",{
+    RoleId:{
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement:true
+    },
+    RoleName:{
+        type: DataTypes.STRING,
+        allowNull: false
+    }
+},{
+    timestamps: false
+})
+
 Location.belongsToMany(User, {
     through: UserLocation,
     foreignKey: "LocationId"
@@ -95,4 +109,9 @@ User.belongsToMany(Location,{
     foreignKey: "UserId"
 })
 
-export { User, UserLocation }
+Roles.hasMany(User,{
+    foreignKey: "RoleId"
+})
+
+
+export { User, UserLocation, Roles }
