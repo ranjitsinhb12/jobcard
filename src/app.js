@@ -1,5 +1,6 @@
 import express from "express"
 import cors from "cors"
+import cookieParser from "cookie-parser"
 import { LIMIT } from "./constants.js";
 
 const app = express();
@@ -15,9 +16,14 @@ app.use(express.urlencoded({extended: true, limit: "12kb"}))
 
 app.use(express.static("public"))
 
-import userRouter from "./routes/company.routes.js"
+app.use(cookieParser())
 
-app.use("/api/v1/company", userRouter)
+import companyRouter from "./routes/company.routes.js"
+import userRouter from "./routes/user.routes.js"
+
+app.use("/api/v1/company", companyRouter)
+
+app.use("/api/v1/user", userRouter)
 
 
 export{ app }

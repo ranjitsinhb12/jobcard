@@ -1,8 +1,19 @@
 import { Router } from "express";
-import { registerCompany } from "../controllers/company.controller.js";
+import { registerCompany, registerLocaton } from "../controllers/company.controller.js";
+import {upload} from "../middlewares/multer.middleware.js"
 
 const router = Router()
 
-router.route("/addcompany").post(registerCompany)
+router.route("/addcompany").post(
+    upload.fields([
+        {
+            name: "CompanyLogo",
+            maxCount: 1
+        }
+    ]),
+    registerCompany
+    )
+
+router.route("/addlocation").post(registerLocaton)
 
 export default router
