@@ -22,15 +22,23 @@ const User = sequelise.define("User", {
         type: DataTypes.STRING,
         allowNull: false,
         isLowercase: true,
-        isEmail: true
+        isEmail: true,
+        unique: true
        },
         UserName:{
         type: DataTypes.STRING,
         allowNull: false,
-        isLowercase: true
+        isLowercase: true,
+        unique: true
         },
         UserPassword:{
-            type: DataTypes.STRING
+            type: DataTypes.STRING,
+
+            validate: {
+                async isPasswordCorrect (UserPassword){
+                   return await bcrypt.compare(UserPassword, this.UserPassword)
+                }
+           }
         },
         UserStatus:{
             type: DataTypes.STRING,
@@ -43,20 +51,18 @@ const User = sequelise.define("User", {
         RefreshToken:{
             type: DataTypes.STRING
         }
+       
 }, 
 {
     timestamps: true
 });
 
-
-User.isPasswordCorrect = async function(UserPassword){
-    return await bcrypt.compare(UserPassword, this.UserPassword)
-}
-
-User.generateAccessToken = function(){
+User.generateAccessToken = function(UserId){
     return jwt.sign(
         {
             UserId: this.UserId,
+            UserName: this.UserName,
+            UserEmail: this.UserEmail
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
@@ -65,7 +71,7 @@ User.generateAccessToken = function(){
     )
 }
 
-User.generateRefreshToken = function(){
+User.generateRefreshToken = function(UserId){
     return jwt.sign(
         {
             UserId: this.UserId,
