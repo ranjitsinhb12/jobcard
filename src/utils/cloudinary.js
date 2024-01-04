@@ -1,6 +1,11 @@
+import dotenv from "dotenv"
 import {v2 as cloudinary} from "cloudinary"
 import fs from "fs"
+import { ApiError } from "./ApiError.js";
 
+dotenv.config({
+    path: "./.env"
+})
 
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
@@ -10,7 +15,9 @@ cloudinary.config({
 
 const uploadOnCloudinary = async (localFilePath) => {
     try {
-        if (!localFilePath) return null
+        if (!localFilePath){ 
+            return new ApiError(400, "Image does not found")
+        }
         //upload the file on cloudinary
         const response = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto"

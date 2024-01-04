@@ -15,7 +15,7 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
 
     const user = await User.findOne({ 
         where: {
-            UserId: decodedToken.UserId
+            UserId: decodedToken?.UserId
         },
         attributes:{
             exclude: ["UserPassword", "RefreshToken", "createdAt", "updatedAt"]

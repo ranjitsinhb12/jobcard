@@ -14,25 +14,24 @@ const generateAccessAndRefreshTokens = async(UserId) => {
     try {
         const user = await User.findByPk(UserId)
         const accessToken = jwt.sign(
-                {
-                    UserId: user.UserId,
-                    UserName: user.UserName,
-                    UserEmail: user.UserEmail
-                },
-                process.env.ACCESS_TOKEN_SECRET,
-                {
-                    expiresIn: process.env.ACCESS_TOKEN_EXPIRY
-                }
-            )
-        
-           const refreshToken = jwt.sign(
             {
                 UserId: user.UserId,
+
             },
-            process.env.REFRESH_TOKEN_SECRET,
+            process.env.ACCESS_TOKEN_SECRET,
             {
-                expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+                expiresIn: process.env.ACCESS_TOKEN_EXPIRY
             }
+        )
+        
+        const refreshToken = jwt.sign(
+        {
+            UserId: user.UserId,
+        },
+        process.env.REFRESH_TOKEN_SECRET,
+        {
+            expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+        }
         )
             
         // const accessToken = User.generateAccessToken(UserId)
@@ -78,14 +77,15 @@ const registerUser = asyncHandler(async (req, res) =>{
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar image is required!")
     }
-
+     console.log(avatarLocalPath)
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
      if(!avatar){
          throw new ApiError(400, "Avatar image is required!")
      }
+
+     console.log(`Avatora log uploaded: ${avatar}`)
     
-     console.log(UserPassword)
     const hashUserPassword = await bcrypt.hash(UserPassword, 10)
 
     const user = await User.create({
@@ -113,8 +113,6 @@ const registerUser = asyncHandler(async (req, res) =>{
         }
         
     })
-
-    console.log(createdUser)
 
     if(!createdUser){
         throw new ApiError(500, "Something went while registering user")
@@ -241,14 +239,14 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    }
 
    try {
-    const decodedToken = jwt.verify(incomingRefreshToken, REFRESH_TOKEN_SECRET)
+    const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
  
-   const user =  User.findByPk(decodedToken.UserId)
+   const user =  await User.findByPk(decodedToken?.UserId)
  
    if(!user){
      throw new ApiError(401, "Invalid refresh Token")
    }
- 
+
    if(incomingRefreshToken !== user?.RefreshToken){
      throw new ApiError(401, "Refresh token is expired or used!")
    }
@@ -261,7 +259,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    .cookie("refreshToken", newRefreshToken, options)
    .json(
      new ApiResponse(200,
-         {accessToken, refreshToken: newRefreshToken},
+         {accessToken:accessToken, refreshToken: newRefreshToken},
          "Access token refreshed sucessfully!"
          )
    )
@@ -270,5 +268,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    }
 
 })
+
+
 
 export {registerUser, addRole, loginUser, logoutUser, refreshAccessToken}
