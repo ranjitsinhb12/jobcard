@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User, UserLocation, Roles } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import { Op } from "sequelize";
@@ -77,14 +77,12 @@ const registerUser = asyncHandler(async (req, res) =>{
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar image is required!")
     }
-     console.log(avatarLocalPath)
+
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
      if(!avatar){
          throw new ApiError(400, "Avatar image is required!")
      }
-
-     console.log(`Avatora log uploaded: ${avatar}`)
     
     const hashUserPassword = await bcrypt.hash(UserPassword, 10)
 
@@ -163,11 +161,17 @@ const loginUser = asyncHandler(async (req,res)=>{
 
     let searchValue = ""
     if(UserName){
-        searchValue = {UserName: UserName};
+        searchValue = {
+            UserName: UserName,
+            UserStatus: "A"
+        };
     }
 
     if(UserEmail){
-        searchValue = {UserEmail: UserEmail};
+        searchValue = {
+            UserEmail: UserEmail,
+            UserStatus: "A"
+        };
     }
 
     const user = await User.findOne({
@@ -269,6 +273,142 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 })
 
+const changePassword = asyncHandler(async (req, res) =>{
+    const {oldPassword, newPassword} = req.body
+
+    const user = await User.findByPk(req.user?.UserId)
+
+    if(!user){
+        throw new ApiError(400, "You are not logedin!!!")
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(oldPassword, user.UserPassword)
+
+    if(!isPasswordCorrect){
+        throw new ApiError(400, "Your Password does not match")
+    }
+
+    const hashNewPassword = await bcrypt.hash(newPassword, 10)
+    user.UserPassword = hashNewPassword
+    await user.save({validate: false})
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed sucessfully"))
+
+})
+
+const currentUser = asyncHandler(async (req, res)=>{
+    return res
+    .status(200)
+    .json(new ApiResponse(200, req.user, "Current user fetched sucessfully"))
+   
+})
+
+const updateAccountDetails = asyncHandler(async (req, res)=>{
+    const {userMobile, userEmail} = req.body
+
+    if(!userMobile || !userEmail){
+        throw new ApiError(400, "All field required!")
+    }
+
+    const user = await User.findByPk(req.user?.UserId)
+
+    if(!user){
+        throw new ApiError(400, "Can't find user to update details!")
+    }
+
+    const checkEmail = await User.findAll({
+        where:{
+            UserEmail: userEmail
+        },
+        attributes: ["UserEmail"]
+    })
+
+    if(checkEmail.length > 0){
+        throw new ApiError(400, "Account with this email already exist!")
+    }
+
+    user.UserMobile = userMobile
+    user.UserEmail = userEmail
+    
+    await user.save()
+
+    const updatedUser = await User.findOne({
+        where:{ 
+            UserId: req.user?.UserId
+        },
+        attributes:{
+            exclude: ["UserPassword", "RefreshToken", "createdAt", "updatedAt"]
+        }
+    })
 
 
-export {registerUser, addRole, loginUser, logoutUser, refreshAccessToken}
+    return res
+    .status(200)
+    .json(new ApiResponse(200, updatedUser, "Account details updated!" ))
+
+})
+
+const updateAvatar = asyncHandler(async (req, res)=>{
+    const avatarLocalPath = req.file?.path
+
+    if(!avatarLocalPath){
+        throw new ApiError(400, "Avatar file is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if(!avatar.url){
+        throw new ApiError(400, "Error while uploading avatar!")
+    }
+
+    const user = await User.findOne({
+        where: {UserId: req.user?.UserId},
+        attributes:{
+            exclude: ["UserPassword", "RefreshToken", "createdAt", "updatedAt"]
+        }
+    })
+
+    const avatarUrl = user?.Avatar
+    const urlArray = avatarUrl?.split("/")
+    const oldImage = urlArray[urlArray.length - 1].split(".")
+    const oldImageName = oldImage[0]
+
+    if(oldImageName){
+        try {
+            await deleteFromCloudinary(oldImageName)
+        } catch (error) {
+            throw new ApiError(500, "Got error while deleting old image")
+        }
+    }
+
+    user.Avatar = avatar?.url
+    await user.save()
+
+    const updatedAvatar = await User.findOne({
+        where:{
+            UserId: req.user.UserId
+        },
+        attributes:{
+            exclude: ["UserPassword", "RefreshToken", "createdAt", "updatedAt"]
+        }
+    })
+
+    return res.status(200)
+    .json(new ApiResponse(200, updatedAvatar, "Avatar image updated successfully"))
+
+})
+
+
+export {
+    registerUser, 
+    addRole, 
+    loginUser, 
+    logoutUser, 
+    refreshAccessToken,
+    changePassword,
+    currentUser,
+    updateAccountDetails,
+    updateAvatar
+}
