@@ -2,7 +2,7 @@ import { DataTypes, Model } from "sequelize";
 import {sequelise} from "../db/index.js"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
-import { Location } from "./location.model.js"
+import { Location } from "./company.model.js"
 
 const User = sequelise.define("User", {
        UserId: {
@@ -50,6 +50,12 @@ const User = sequelise.define("User", {
         },
         RefreshToken:{
             type: DataTypes.STRING
+        },
+        PayRates:{
+            type: DataTypes.FLOAT
+        },
+        PayMethod:  {
+            type: DataTypes.STRING
         }
        
 }, 
@@ -88,6 +94,14 @@ const UserLocation = sequelise.define("UserLocation",{
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
+    },
+    LocationStatus: {
+        type: DataTypes.STRING,
+        defaultValue: "A"
+    },
+    DefaultLocation:{
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 },{timestamps: false})
 

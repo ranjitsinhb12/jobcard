@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User, UserLocation, Roles } from "../models/user.model.js";
+import {Company, Location} from "../models/company.model.js";
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
@@ -50,8 +51,15 @@ const generateAccessAndRefreshTokens = async(UserId) => {
 }
 
 const registerUser = asyncHandler(async (req, res) =>{
+    const roleId = req.user.RoleId
+
+    if(roleId !== 1 && roleId !== 2 && roleId !== 3){
+        throw new ApiError(400, "You do not have Access to register User")
+    }
+
     const { FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId, RoleId} = req.body
 
+    // check if not null or empty
     if(
         [FullName, UserMobile, UserEmail, UserName, UserPassword].some((field)=> field.trim() === ""
         )
@@ -59,6 +67,12 @@ const registerUser = asyncHandler(async (req, res) =>{
         throw new ApiError(400, "All fields are required!")
     }
 
+    // Check Location Id
+    if(LocationId.length <= 0){
+        throw new ApiError(400, "Location is Mandatory Field")
+    }
+
+    // Check if User already registered
     const existedUser = await User.findOne({
         where:{
            [Op.or]:  [{UserName: UserName}, {UserEmail: UserEmail}]
@@ -69,23 +83,29 @@ const registerUser = asyncHandler(async (req, res) =>{
         throw new ApiError(400, "User Already Exist!")
     }
 
+    // get Uploaded local image path
     let avatarLocalPath;
     if(req.files && Array.isArray(req.files.Avatar) && req.files.Avatar.length > 0){
         avatarLocalPath = req.files.Avatar[0].path
     }
 
+    // if Avatar local path not found
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar image is required!")
     }
 
+    // Upload to cloudinary
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
+    // Check if image uploaded sucessfully or not
      if(!avatar){
          throw new ApiError(400, "Avatar image is required!")
      }
     
+     // Has password
     const hashUserPassword = await bcrypt.hash(UserPassword, 10)
 
+    // Create User 
     const user = await User.create({
         FullName,
         Avatar: avatar?.url || "",
@@ -94,14 +114,39 @@ const registerUser = asyncHandler(async (req, res) =>{
         UserName: UserName.toLowerCase(),
         UserPassword: hashUserPassword,
         RoleId
-
     })
 
-    const userLocation = await UserLocation.create({
-        UserId: user.UserId,
-        LocationId: LocationId
+    // convert strin Location Id to Intiger
+    let convertedLocationId = []
+    for(let i = 0; i < LocationId.length; i++){
+        convertedLocationId.push(parseInt(LocationId[i]))
+    }
+
+    // Find Location
+    const locations = await Location.findAll({
+        where:{
+            [Op.and] :[
+                {LocationId: {
+                    [Op.in]: convertedLocationId
+                }},
+                {CompanyId: "1"}
+            ]
+            
+        }
     })
 
+    if(!locations){
+        throw new ApiError(400, "Location you are trying to add could not found")
+    }
+    
+    // add Location to UserLocation Junction table
+    const addedLocation = await user.addLocations(locations)
+
+    if(!addedLocation){
+        throw new ApiError(500, "Can not add Location to user!")
+    }
+    
+    // After create find User to make sure if user created or not
     const createdUser = await User.findAll({
         where: {
             UserId: user.UserId
@@ -112,17 +157,22 @@ const registerUser = asyncHandler(async (req, res) =>{
         
     })
 
+    // If user not created
     if(!createdUser){
         throw new ApiError(500, "Something went while registering user")
     }
 
+    // Sucessfully registerd user
     return res.status(201).json(
         new ApiResponse(200, createdUser, "User registered Successfully")
     ) 
 })
 
 const addRole = asyncHandler(async (req, res) => {
-    
+    const roleId = req.user.RoleId
+    if(roleId !== 1){
+        throw new ApiError(400, "Only Admin can Add roles!!!")
+    }
     const { RoleName } =  req.body
     
     if(RoleName === "" || RoleName === undefined || RoleName === null){
@@ -190,19 +240,52 @@ const loginUser = asyncHandler(async (req,res)=>{
 
     const { refreshToken, accessToken} = await generateAccessAndRefreshTokens(user.UserId)
 
-    const logedInUser = await User.findAll({
+    
+    const logedInUser = await User.findOne({
         where: {
             UserId: user.UserId
         },
         attributes:{
             exclude: ["UserPassword", "RefreshToken", "createdAt", "updatedAt"]
+        },
+        include:{
+            model: Location,
+            attributes: ["LocationId", "LocationName"],
+            where:{
+                LocationStatus: "A"
+            },
+            through:{
+                attributes: ["UserLocationId"],
+                where:{
+                    [Op.and]: [
+                        {LocationStatus: "A"},
+                        {DefaultLocation: true}
+                    ]
+                }
+            },
+            required: false
         }
     })
 
+    if(!logedInUser){
+        throw new ApiError(400, "Unauthorized Request!!!")
+    }
+
+    let locationId, locationName
+    if(logedInUser.Locations.length <= 0){
+        locationId = null
+        locationName = null
+    }else{
+    locationId = logedInUser.Locations[0].LocationId
+    locationName = logedInUser.Locations[0].LocationName
+    }
+    
     return res
         .status(200)
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
+        .cookie("locationId", locationId, options)
+        .cookie("locationName", locationName, options)
         .json(
             new ApiResponse(200, {
                 user: logedInUser, accessToken, refreshToken
@@ -210,6 +293,7 @@ const loginUser = asyncHandler(async (req,res)=>{
                 "User loged in successfully"
             )
         )
+
 })
 
 const logoutUser = asyncHandler(async(req, res) => {
@@ -230,6 +314,8 @@ const logoutUser = asyncHandler(async(req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
+    .clearCookie("locationId", options)
+    .clearCookie("locationName", options)
     .json(new ApiResponse(200, {}, "User logged out sucessfully"))
 
 
@@ -244,8 +330,38 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
    try {
     const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
- 
-   const user =  await User.findByPk(decodedToken?.UserId)
+
+
+   const user = await User.findOne({
+        where: {
+            UserId: decodedToken?.UserId
+        },
+        attributes:{
+            exclude: ["UserPassword", "createdAt", "updatedAt"]
+        },
+        include:{
+            model: Location,
+            attributes: ["LocationId", "LocationName"],
+            where:{
+                LocationStatus: "A"
+            },
+            through:{
+                attributes: ["UserLocationId"],
+                where:{
+                    [Op.and]: [
+                        {LocationStatus: "A"},
+                        {DefaultLocation: true}
+                    ]
+                }
+            },
+            required: false
+        }
+    })
+
+    console.log(user)
+
+    const locationId = user.Locations[0].LocationId
+    const locationName = user.Locations[0].LocationName
  
    if(!user){
      throw new ApiError(401, "Invalid refresh Token")
@@ -261,6 +377,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    .status(200)
    .cookie("accessToken", accessToken, options)
    .cookie("refreshToken", newRefreshToken, options)
+   .cookie("locationId", locationId, options)
+   .cookie("locationName", locationName, options)
    .json(
      new ApiResponse(200,
          {accessToken:accessToken, refreshToken: newRefreshToken},
@@ -400,6 +518,120 @@ const updateAvatar = asyncHandler(async (req, res)=>{
 
 })
 
+const userAllLocatons = asyncHandler(async (req, res)=>{
+    const UserId = req.user.UserId
+    const UserRole = req.user.RoleId
+
+    let locations
+    if(UserRole === 1){
+        const userLocations = await Company.findAll({
+            attributes: ["CompanyName", "CompanyLogo", "CompanyId"],
+            include: {
+                model: Location,
+                attributes: ["LocationId", "LocationName"],
+                where:{
+                    LocationStatus: "A"
+                }
+            },
+            where:{
+                CompanyStatus: "A"
+            }
+        })
+
+        if(!userLocations){
+            throw new ApiError(400, "No Location Found For your!")
+        }
+
+        locations = userLocations
+    }else{
+        const userLocations = await User.findOne({
+            where:{
+                UserId: UserId
+            },
+            attributes: ["FullName"],
+            include:{
+                model: Location,
+                attributes:["LocationId", "LocationName"],
+                where: {
+                    LocationStatus: "A"
+                },
+                through:{
+                    attributes: ["UserLocationId"],
+                    where:{
+                        [Op.and]:[
+                            {UserId: UserId},
+                            {LocationStatus: "A"}
+                        ]
+                        
+                    }
+                }
+            }
+        })
+
+        if(!userLocations){
+            new ApiError(400, "No Location found for you!!")
+        }
+
+        locations = userLocations
+        
+    }
+
+    return res.status(200).json( new ApiResponse(200, locations, "Sucessfully find locations"))
+
+
+})
+const loginLocation = asyncHandler(async(req,res)=>{
+    // Receive store data from body
+    // check if store Id maches with user
+    // check store is active
+    // check User location is active
+    // set default location
+    // set cookies for location
+
+    const {LocationId} = req.body
+    const UserId = req.user.UserId
+
+    if(!LocationId){
+        throw new ApiError(400, "Select Loction to set Location!")
+    }
+
+    const foundLocation = await User.findOne({
+        where:{
+            UserId: UserId
+        },
+        include:{
+            model: Location,
+            attribute: [ "LocationId", "LocationName" ],
+            where:{
+                LocationStatus: "A"
+            },
+            through:{
+                attributes: ["UserLocationId"],
+                where:{
+                    [Op.and]: [
+                        {LocationStatus: "A"},
+                        {LocationId: LocationId},
+                        {UserId: UserId}
+                    ]
+                }
+            }
+        }
+    })
+
+    if(!foundLocation){
+        throw new ApiError(400, "Unauthorised request!!!")
+    }
+
+    const locationIdToUpdate = foundLocation?.Locations[0]?.LocationId
+    const locationNameToUpdate = foundLocation?.Locations[0]?.LocationName
+
+    res.status(200)
+    .cookie("locationId", locationIdToUpdate, options)
+    .cookie("locationName", locationNameToUpdate, options)
+    .json(new ApiResponse(200, foundLocation, "Location set sucessfully"))
+
+})
+
 
 export {
     registerUser, 
@@ -410,5 +642,8 @@ export {
     changePassword,
     currentUser,
     updateAccountDetails,
-    updateAvatar
+    updateAvatar,
+    loginLocation,
+    userAllLocatons
+
 }

@@ -1,13 +1,17 @@
 import {asyncHandler} from "../utils/asyncHandler.js"
-import { Company } from "../models/company.model.js"
+import { Company, Location } from "../models/company.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
-import { Location } from "../models/location.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import { json } from "sequelize"
 
 const registerCompany = asyncHandler(async (req, res) => {
+    const roleId = req.user.RoleId
+    if(roleId !== 1){
+        throw new ApiError(400, "Unauthorised Request, Only admin can Add company!")
+    }
     const { CompanyName} = req.body
-
+    console.log(admin)
     // empty check for company Name
     if(CompanyName.trim() === ""){
         throw new ApiError(400, "Company name is required!")
@@ -53,8 +57,77 @@ const registerCompany = asyncHandler(async (req, res) => {
 
 })
 
-const registerLocaton = asyncHandler(async(req, res)=>{
+const allCompany = asyncHandler(async(req, res)=>{
+    const roleId = req.user.RoleId
+    if(roleId !== 1){
+        throw new ApiError(400, "Unauthorised Request, Please contact Admin")
+    }
 
+   const companies =  await Company.findAll({
+        attributes:{
+            exclude: ["createdAt", "updatedAt"]
+        }
+   })
+
+   res.status(200)
+   .json( new ApiResponse(200, companies, "All company found sucessfully!"))
+
+})
+
+const updateCompany = asyncHandler(async(req,res)=>{
+
+    const roleId = req.user.RoleId
+
+    if(roleId !== 1 ){
+        throw new ApiError(400, "You do not have Access to edit Company")
+    }
+    
+    const {CompanyId, CompanyName, CompanyStatus} = req.body
+
+    if([CompanyId, CompanyName, CompanyStatus].some(field=> field.trim() === "")){
+        throw new ApiError(400, "All field required")
+    }
+
+    const company = await Company.findByPk(CompanyId)
+
+    if(!company){
+        throw new ApiError(400, "Please select company to edit!")
+    }
+
+    company.CompanyName = CompanyName
+    company.CompanyStatus = CompanyStatus
+
+    const updatedCompany = await company.save()
+
+    if(!updatedCompany){
+        throw new ApiError(500, "Some error has occured, contact admin!")
+    }
+
+    const editedCompany = await Company.findByPk(CompanyId)
+
+    if(editedCompany.CompanyStatus == "D"){
+        const locationsToUpdate = await Location.update({LocationStatus: "D"},{
+            where:{
+                CompanyId: editedCompany?.CompanyId
+            }
+        })
+
+        if(!locationsToUpdate){
+            throw new ApiError(400, "Can not find any location, Contact Admin!")
+        }
+        
+    }
+
+    res.status(200)
+    .json( new ApiResponse(200, {editedCompany}, "Company Updated Sucessfully"))
+
+})
+
+const registerLocaton = asyncHandler(async(req, res)=>{
+    const roleId = req.user.RoleId
+    if(roleId !== 1){
+        throw new ApiError(400, "Unauthorised Request, Only admin can register location!")
+    }
     const {  LocationName, LocationAddress, LocationContact, LocationEmail, LocationABN, CompanyId} = req.body
 
     if(CompanyId === "" || CompanyId <= 0 || CompanyId === undefined || CompanyId === null){
@@ -81,17 +154,94 @@ const registerLocaton = asyncHandler(async(req, res)=>{
         LocationEmail: LocationEmail,
         CompanyId: 1
 
-    }).then(()=>{
-        return res.status(201).json(
-            new ApiResponse(201, location, "Locations Added sucessfully")
-        )
-    }).catch((err)=>{
-        throw new ApiError(500, "Some error occured while creating Location!", err)
     })
+
+    if(!location){
+        throw new ApiError(400, "Can not add Location, Pleaes try later!")
+    }
+    
+    return res.status(201).json(
+        new ApiResponse(201, location, "Locations Added sucessfully")
+    )
+
     
 
 })
+
+const locationByCompany = asyncHandler(async(req, res)=>{
+    const {CompanyId} = req.body
+    const allLocationByCompany = await Location.findAll({
+        where:{
+            CompanyId: CompanyId
+        }
+    })
+
+    res.status(200)
+    .json( new ApiResponse(400, allLocationByCompany, "All location found for company"))
+})
+
+const currentLocation = asyncHandler(async (req, res)=>{
+    const LocationId = req.user?.Locations[0]?.LocationId
+
+   const location = await Location.findOne({
+        where:{
+            LocationId: LocationId
+        },
+        include:{
+            model: Company
+        }
+    })
+
+    res.status(200)
+    .json(new ApiResponse(200, location, "Current Location sucessfully found!"))
+})
+
+const updateLocation = asyncHandler(async(req,res)=>{
+    const roleId = req.user.RoleId
+
+    if(roleId !== 1 && roleId !== 2 && roleId !== 3){
+        throw new ApiError(400, "You do not have Access to edit Location")
+    }
+
+    const {LocationName, LocationAddress, LocationABN, LocationContact, LocationEmail, LocationStatus} = req.body
+    const LocationId = req.user?.Locations[0]?.LocationId
+
+    if(
+        [LocationName, LocationAddress, LocationABN, LocationContact, LocationEmail].some(field=> field.trim() === "")
+    ){
+        throw new ApiError(400, "All fields are required!")
+    }
+
+    const location = await Location.findOne({
+        where: {
+            LocationId: LocationId
+         }
+    })
+
+    if(!location){
+        throw new ApiError(400, "Can not find location!")
+    }
+    location.LocationName = LocationName
+    location.LocationAddress = LocationAddress
+    location.LocationABN = LocationABN
+    location.LocationContact = LocationContact
+    location.LocationEmail = LocationEmail
+    location.LocationStatus = LocationStatus
+
+    await location.save()
+
+    res.status(200)
+    .json(new ApiResponse(200, {}, "Location Updated sucessfully"))
+
+})
+
+
 export{
     registerCompany,
-    registerLocaton
+    registerLocaton,
+    allCompany,
+    updateLocation,
+    locationByCompany,
+    currentLocation,
+    updateCompany
 }

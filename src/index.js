@@ -1,8 +1,7 @@
 import dotenv from "dotenv"
 import {connectDB, sequelise} from "./db/index.js"
 import {app} from "./app.js"
-import { Company } from "./models/company.model.js"
-import { Location } from "./models/location.model.js"
+import { Company, Location } from "./models/company.model.js"
 import{ User } from "./models/user.model.js"
 
 

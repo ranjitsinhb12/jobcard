@@ -1,10 +1,20 @@
 import { Router } from "express";
-import { registerCompany, registerLocaton } from "../controllers/company.controller.js";
+import { 
+    registerCompany, 
+    registerLocaton, 
+    allCompany, 
+    locationByCompany,
+    updateLocation,
+    currentLocation,
+    updateCompany
+
+} from "../controllers/company.controller.js";
 import {upload} from "../middlewares/multer.middleware.js"
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router()
 
-router.route("/addcompany").post(
+router.route("/addcompany").post(verifyJWT,
     upload.fields([
         {
             name: "CompanyLogo",
@@ -14,6 +24,18 @@ router.route("/addcompany").post(
     registerCompany
     )
 
-router.route("/addlocation").post(registerLocaton)
+router.route("/all-companies").get(verifyJWT, allCompany)
+
+router.route("/addlocation").post(verifyJWT, registerLocaton)
+
+router.route("/edit-location").post(verifyJWT, updateLocation)
+
+router.route("/get-location-by-company").post(verifyJWT, locationByCompany)
+
+router.route("/current-location").get(verifyJWT, currentLocation)
+
+router.route("/edit-company").post(verifyJWT, updateCompany)
+
+
 
 export default router

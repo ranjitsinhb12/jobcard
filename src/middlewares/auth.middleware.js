@@ -1,11 +1,14 @@
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
+import { Location, Company } from "../models/company.model.js"
 import jwt from "jsonwebtoken"
+import { Op } from "sequelize";
 
 const verifyJWT = asyncHandler(async (req, res, next) => {
     try {
        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
+       const location = req.cookies?.locationId || req.header("Authorization")?.replace("Bearer", "")
 
        if(!token){
         throw new ApiError(401, "Unauthorized request!!!!")
@@ -19,6 +22,24 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
         },
         attributes:{
             exclude: ["UserPassword", "RefreshToken", "createdAt", "updatedAt"]
+        },
+        include:{
+            model: Location,
+            attributes:["LocationId", "LocationName"],
+            where:{
+                LocationStatus: "A"
+            },
+            through:{
+                attributes: ["UserLocationId", "DefaultLocation"],
+                where:{
+                    [Op.and]: [
+                        {LocationStatus: "A"},
+                        {UserId: decodedToken?.UserId},
+                        {LocationId: location}
+                    ]
+                    
+                }
+            }
         }
     })
     if(!user){
