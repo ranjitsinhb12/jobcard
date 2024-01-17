@@ -1,8 +1,8 @@
 import { DataTypes, Model } from "sequelize";
 import {sequelise} from "../../db/index.js"
-import bcrypt from "bcrypt"
-import jwt from "jsonwebtoken"
 import { User } from "../user.model.js";
+import { Company } from "../company.model.js";
+
 
 const Customer = sequelise.define("Customer", {
     CustomerId: {
@@ -65,6 +65,9 @@ Customer.belongsTo(User, {foreignKey: "CreatedBy"})
 
 Customer.hasMany(CustomerContact, {foreignKey: "CompanyId"})
 CustomerContact.belongsTo(Customer, {foreignKey: "CompanyId"})
+
+Company.hasMany(Customer, {foreignKey: "CompanyId"})
+Customer.belongsTo(Company, {foreignKey: "CompanyId"})
 
 export { Customer, CustomerContact }
 
