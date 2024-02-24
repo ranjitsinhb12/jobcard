@@ -57,12 +57,11 @@ const registerUser = asyncHandler(async (req, res) =>{
         throw new ApiError(400, "You do not have Access to register User")
     }
 
-    const { FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId, RoleId} = req.body
+    const { FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId, RoleId, CompanyId, PayRates, PayMethod} = req.body
 
     // check if not null or empty
     if(
-        [FullName, UserMobile, UserEmail, UserName, UserPassword].some((field)=> field.trim() === ""
-        )
+        [FullName, UserMobile, UserEmail, UserName, UserPassword, PayRates, PayMethod].some((field)=> field.trim() === "")
     ){
         throw new ApiError(400, "All fields are required!")
     }
@@ -70,6 +69,14 @@ const registerUser = asyncHandler(async (req, res) =>{
     // Check Location Id
     if(LocationId.length <= 0){
         throw new ApiError(400, "Location is Mandatory Field")
+    }
+
+    if(RoleId.length <=0){
+        throw new ApiError(400, "Please select role!!")
+    }
+
+    if(CompanyId.length <= 0){
+        throw new ApiError(400, "Please select Company!!")
     }
 
     // Check if User already registered
@@ -113,7 +120,10 @@ const registerUser = asyncHandler(async (req, res) =>{
         UserEmail: UserEmail.toLowerCase(),
         UserName: UserName.toLowerCase(),
         UserPassword: hashUserPassword,
-        RoleId
+        RoleId,
+        CompanyId,
+        PayMethod,
+        PayRates
     })
 
     // convert strin Location Id to Intiger

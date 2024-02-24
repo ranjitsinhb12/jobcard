@@ -2,7 +2,7 @@ import { DataTypes, Model } from "sequelize";
 import {sequelise} from "../db/index.js"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
-import { Location } from "./company.model.js"
+import { Location, Company } from "./company.model.js"
 
 const User = sequelise.define("User", {
        UserId: {
@@ -118,6 +118,9 @@ const Roles = sequelise.define("Roles",{
 },{
     timestamps: false
 })
+
+Company.hasMany(User, {foreignKey: "CompanyId"})
+User.belongsTo(Company, {foreignKey: "CompanyId"})
 
 Location.belongsToMany(User, {
     through: UserLocation,

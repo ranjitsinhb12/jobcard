@@ -20,10 +20,13 @@ app.use(cookieParser())
 
 import companyRouter from "./routes/company.routes.js"
 import userRouter from "./routes/user.routes.js"
+import jobCardRouter from "./routes/jobcard.routes.js"
 
 app.use("/api/v1/company", companyRouter)
 
 app.use("/api/v1/user", userRouter)
+
+app.use("/api/v1/jobcard", jobCardRouter)
 
 
 export{ app }

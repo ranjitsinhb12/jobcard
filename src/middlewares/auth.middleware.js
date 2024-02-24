@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken"
 import { Op } from "sequelize";
 
 const verifyJWT = asyncHandler(async (req, res, next) => {
-    try {
+    //try {
        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
        const location = req.cookies?.locationId || req.header("Authorization")?.replace("Bearer", "")
 
@@ -15,6 +15,11 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
        }
 
        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+
+       if(decodedToken){
+        console.log(decodedToken.UserId)
+       }
+
 
     const user = await User.findOne({ 
         where: {
@@ -25,7 +30,7 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
         },
         include:{
             model: Location,
-            attributes:["LocationId", "LocationName"],
+            attributes:["LocationId", "LocationName", "CompanyId"],
             where:{
                 LocationStatus: "A"
             },
@@ -39,19 +44,22 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
                     ]
                     
                 }
-            }
-        }
+            },
+            required: false
+        },
+        
     })
-    if(!user){
-        throw new ApiError(401, "Invalid Access Token!")
-    }
 
+    if(!user){
+        throw new ApiError(401, "Invalid Access Token!!!!!!!!")
+    }
+    console.log(user)
     req.user = user;
     next()
     
-    } catch (error) {
-        throw new ApiError(401, error?.message || "Invalid Access Token")
-    }
+    // } catch (error) {
+    //     throw new ApiError(401, error?.message || "Invalid Access Token")
+    // }
 })
 
 export { verifyJWT}
