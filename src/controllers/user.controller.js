@@ -51,13 +51,8 @@ const generateAccessAndRefreshTokens = async(UserId) => {
 }
 
 const registerUser = asyncHandler(async (req, res) =>{
-    const roleId = req.user.RoleId
-
-    if(roleId !== 1 && roleId !== 2 && roleId !== 3){
-        throw new ApiError(400, "You do not have Access to register User")
-    }
-
-    const { FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId, RoleId, CompanyId, PayRates, PayMethod} = req.body
+    
+    const { FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId, RoleId, CompanyId, IsWorking, PayRates, PayMethod} = req.body
 
     // check if not null or empty
     if(
@@ -75,7 +70,7 @@ const registerUser = asyncHandler(async (req, res) =>{
         throw new ApiError(400, "Please select role!!")
     }
 
-    if(CompanyId.length <= 0){
+    if(CompanyId <= 0){
         throw new ApiError(400, "Please select Company!!")
     }
 
@@ -123,7 +118,8 @@ const registerUser = asyncHandler(async (req, res) =>{
         RoleId,
         CompanyId,
         PayMethod,
-        PayRates
+        PayRates,
+        IsWorking
     })
 
     // convert strin Location Id to Intiger

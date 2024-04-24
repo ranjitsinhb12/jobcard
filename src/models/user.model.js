@@ -56,6 +56,10 @@ const User = sequelise.define("User", {
         },
         PayMethod:  {
             type: DataTypes.STRING
+        },
+        IsWorking:{
+            type: DataTypes.BOOLEAN,
+            defaultValue: true
         }
        
 }, 

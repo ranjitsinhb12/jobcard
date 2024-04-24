@@ -14,10 +14,11 @@ import {
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
+import { verifyAdmin, verifyManager, verifyOwner } from "../middlewares/role.middleware.js";
 
 const router = Router()
 
-router.route("/register").post(verifyJWT,
+router.route("/register").post(verifyJWT, verifyManager,
     upload.fields([
         {
             name: "Avatar",
@@ -27,7 +28,7 @@ router.route("/register").post(verifyJWT,
     registerUser
     )
     
-router.route("/addrole").post(verifyJWT, addRole)
+router.route("/addrole").post(verifyJWT, verifyAdmin, addRole)
 
 router.route("/login").post(loginUser)
 
