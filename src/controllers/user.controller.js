@@ -295,7 +295,7 @@ const loginUser = asyncHandler(async (req,res)=>{
         .cookie("locationName", locationName, options)
         .json(
             new ApiResponse(200, {
-                user: logedInUser, accessToken, refreshToken
+                user: logedInUser, accessToken
             },
                 "User loged in successfully"
             )
