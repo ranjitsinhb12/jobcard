@@ -224,68 +224,68 @@ const JobOutsourcing = sequelise.define("JobOutsourcing", {
 });
 
 /// User relation to Quote
-User.hasMany(Quote, {foreignKey: "QuotedBy"})
-Quote.belongsTo(User, {foreignKey: "QuotedBy"})
+User.hasMany(Quote, {htmlForeignKey: "QuotedBy"})
+Quote.belongsTo(User, {htmlForeignKey: "QuotedBy"})
 
 /// Contact Person relation to Quote
-CustomerContact.hasMany(Quote, {foreignKey: "ContactId"})
-Quote.belongsTo(CustomerContact, {foreignKey: "ContactId"})
+CustomerContact.hasMany(Quote, {htmlForeignKey: "ContactId"})
+Quote.belongsTo(CustomerContact, {htmlForeignKey: "ContactId"})
 
 /// Customer relation to Quote
-Customer.hasMany(Quote, {foreignKey: "CustomerId"})
-Quote.belongsTo(Customer, {foreignKey: "CustomerId"})
+Customer.hasMany(Quote, {htmlForeignKey: "CustomerId"})
+Quote.belongsTo(Customer, {htmlForeignKey: "CustomerId"})
 
 /// Location relation to Quote
-Location.hasMany(Quote, {foreignKey: "LocationId"})
-Quote.belongsTo(Location, {foreignKey: "LocationId"})
+Location.hasMany(Quote, {htmlForeignKey: "LocationId"})
+Quote.belongsTo(Location, {htmlForeignKey: "LocationId"})
 
 /// Quote relation to Jobdetaoils
-Quote.hasMany(JobDetail, { foreignKey: "QuoteId"} )
-JobDetail.belongsTo(Quote, { foreignKey: "QuoteId"} )
+Quote.hasMany(JobDetail, { htmlForeignKey: "QuoteId"} )
+JobDetail.belongsTo(Quote, { htmlForeignKey: "QuoteId"} )
 
 /// User relation to Job details
-User.hasMany(JobDetail, {foreignKey: "ProgrammedBy"})
-JobDetail.belongsTo(User, {foreignKey: "ProgrammedBy"})
+User.hasMany(JobDetail, {htmlForeignKey: "ProgrammedBy"})
+JobDetail.belongsTo(User, {htmlForeignKey: "ProgrammedBy"})
 
 /// Contact Person relation to Job details
-CustomerContact.hasMany(JobDetail, {foreignKey: "JobApprovedBy"})
-JobDetail.belongsTo(CustomerContact, {foreignKey: "JobApprovedBy"})
+CustomerContact.hasMany(JobDetail, {htmlForeignKey: "JobApprovedBy"})
+JobDetail.belongsTo(CustomerContact, {htmlForeignKey: "JobApprovedBy"})
 
 /// User relation to JobDetail as QC by
-User.hasMany(JobDetail, {foreignKey: "QCBy"})
-JobDetail.belongsTo(User, {foreignKey: "QCBy"})
+User.hasMany(JobDetail, {htmlForeignKey: "QCBy"})
+JobDetail.belongsTo(User, {htmlForeignKey: "QCBy"})
 
 /// User relation to JobDetail as DispatchBy
-User.hasMany(JobDetail, {foreignKey: "DispatchBy"})
-JobDetail.belongsTo(User, {foreignKey: "DispatchBy"})
+User.hasMany(JobDetail, {htmlForeignKey: "DispatchBy"})
+JobDetail.belongsTo(User, {htmlForeignKey: "DispatchBy"})
 
 /// Location relation to JobDetail
-Location.hasMany(JobDetail, {foreignKey: "LocationId"})
-JobDetail.belongsTo(Location, {foreignKey: "LocationId"})
+Location.hasMany(JobDetail, {htmlForeignKey: "LocationId"})
+JobDetail.belongsTo(Location, {htmlForeignKey: "LocationId"})
 
 /// JobDetail relation to job material
-JobDetail.hasMany(JobMaterial, {foreignKey: "JobId"})
-JobMaterial.belongsTo(JobDetail, {foreignKey: "JobId"})
+JobDetail.hasMany(JobMaterial, {htmlForeignKey: "JobId"})
+JobMaterial.belongsTo(JobDetail, {htmlForeignKey: "JobId"})
 
 /// JobDetail relation job Tube material
-JobDetail.hasMany(JobTubeMaterial, {foreignKey: "JobId"})
-JobTubeMaterial.belongsTo(JobDetail, {foreignKey: "JobId"})
+JobDetail.hasMany(JobTubeMaterial, {htmlForeignKey: "JobId"})
+JobTubeMaterial.belongsTo(JobDetail, {htmlForeignKey: "JobId"})
 
 /// JobDetail relation to freeissue Material
-JobDetail.hasMany(FreeIssueMaterial, {foreignKey: "JobId"})
-FreeIssueMaterial.belongsTo(JobDetail, {foreignKey: "JobId"})
+JobDetail.hasMany(FreeIssueMaterial, {htmlForeignKey: "JobId"})
+FreeIssueMaterial.belongsTo(JobDetail, {htmlForeignKey: "JobId"})
 
 /// JobDetail relation to JobOutsourcing
-JobDetail.hasMany(JobOutsourcing, {foreignKey: "JobId"})
-JobOutsourcing.belongsTo(JobDetail, {foreignKey: "JobId"})
+JobDetail.hasMany(JobOutsourcing, {htmlForeignKey: "JobId"})
+JobOutsourcing.belongsTo(JobDetail, {htmlForeignKey: "JobId"})
 
 /// OutsourcingCompany relation to JobOutsourcing
-OutsourcingCompany.hasMany(JobOutsourcing, {foreignKey: "OCompanyId"})
-JobOutsourcing.belongsTo(OutsourcingCompany, {foreignKey: "OCompanyId"})
+OutsourcingCompany.hasMany(JobOutsourcing, {htmlForeignKey: "OCompanyId"})
+JobOutsourcing.belongsTo(OutsourcingCompany, {htmlForeignKey: "OCompanyId"})
 
 /// Outsourcing relation to JobOutsourcing
-Outsourcing.hasMany(JobOutsourcing, {foreignKey: "OutsourcingId"})
-JobOutsourcing.belongsTo(Outsourcing, {foreignKey: "OutsourcingId"})
+Outsourcing.hasMany(JobOutsourcing, {htmlForeignKey: "OutsourcingId"})
+JobOutsourcing.belongsTo(Outsourcing, {htmlForeignKey: "OutsourcingId"})
 
 export { 
     Quote, 

@@ -124,6 +124,7 @@ const registerUser = asyncHandler(async (req, res) =>{
 
     // convert strin Location Id to Intiger
     let convertedLocationId = []
+
     for(let i = 0; i < LocationId.length; i++){
         convertedLocationId.push(parseInt(LocationId[i]))
     }
@@ -219,17 +220,17 @@ const loginUser = asyncHandler(async (req,res)=>{
     if(UserName){
         searchValue = {
             UserName: UserName,
-            UserStatus: "A"
+            IsWorking: true
         };
     }
 
     if(UserEmail){
         searchValue = {
             UserEmail: UserEmail,
-            UserStatus: "A"
+            IsWorking: true
         };
     }
-
+    console.log(searchValue)
     const user = await User.findOne({
         where: searchValue
      })
@@ -274,7 +275,7 @@ const loginUser = asyncHandler(async (req,res)=>{
     })
 
     if(!logedInUser){
-        throw new ApiError(400, "Unauthorized Request!!!")
+        throw new ApiError(402, "Unauthorized Request!!!")
     }
 
     let locationId, locationName
@@ -545,7 +546,7 @@ const userAllLocatons = asyncHandler(async (req, res)=>{
         })
 
         if(!userLocations){
-            throw new ApiError(400, "No Location Found For your!")
+            throw new ApiError(400, "No Location Found htmlFor your!")
         }
 
         locations = userLocations
@@ -575,7 +576,7 @@ const userAllLocatons = asyncHandler(async (req, res)=>{
         })
 
         if(!userLocations){
-            new ApiError(400, "No Location found for you!!")
+            new ApiError(400, "No Location found htmlFor you!!")
         }
 
         locations = userLocations
@@ -592,7 +593,7 @@ const loginLocation = asyncHandler(async(req,res)=>{
     // check store is active
     // check User location is active
     // set default location
-    // set cookies for location
+    // set cookies htmlFor location
 
     const {LocationId} = req.body
     const UserId = req.user.UserId

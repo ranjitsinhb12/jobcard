@@ -60,14 +60,14 @@ const CustomerContact = sequelise.define("CustomerContact", {
  timestamps: true
 });
 
-User.hasMany(Customer, {foreignKey: "CreatedBy"})
-Customer.belongsTo(User, {foreignKey: "CreatedBy"})
+User.hasMany(Customer, {htmlForeignKey: "CreatedBy"})
+Customer.belongsTo(User, {htmlForeignKey: "CreatedBy"})
 
-Customer.hasMany(CustomerContact, {foreignKey: "CompanyId"})
-CustomerContact.belongsTo(Customer, {foreignKey: "CompanyId"})
+Customer.hasMany(CustomerContact, {htmlForeignKey: "CompanyId"})
+CustomerContact.belongsTo(Customer, {htmlForeignKey: "CompanyId"})
 
-Company.hasMany(Customer, {foreignKey: "CompanyId"})
-Customer.belongsTo(Company, {foreignKey: "CompanyId"})
+Company.hasMany(Customer, {htmlForeignKey: "CompanyId"})
+Customer.belongsTo(Company, {htmlForeignKey: "CompanyId"})
 
 export { Customer, CustomerContact }
 

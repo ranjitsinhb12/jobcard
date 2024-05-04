@@ -12,7 +12,7 @@ const registerCompany = asyncHandler(async (req, res) => {
     }
     const { CompanyName} = req.body
     console.log(admin)
-    // empty check for company Name
+    // empty check htmlFor company Name
     if(CompanyName.trim() === ""){
         throw new ApiError(400, "Company name is required!")
     }
@@ -177,7 +177,7 @@ const locationByCompany = asyncHandler(async(req, res)=>{
     })
 
     res.status(200)
-    .json( new ApiResponse(400, allLocationByCompany, "All location found for company"))
+    .json( new ApiResponse(400, allLocationByCompany, "All location found htmlFor company"))
 })
 
 const currentLocation = asyncHandler(async (req, res)=>{

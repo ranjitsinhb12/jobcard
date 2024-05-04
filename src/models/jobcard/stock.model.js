@@ -23,11 +23,11 @@ const PlateDetail = sequelise.define("PlateDetail", {
  timestamps: true
 });
 
-User.hasMany(PlateDetail, {foreignKey: "UserId"})
-PlateDetail.belongsTo(User, {foreignKey: "QuotedBy"})
+User.hasMany(PlateDetail, {htmlForeignKey: "UserId"})
+PlateDetail.belongsTo(User, {htmlForeignKey: "QuotedBy"})
 
-Location.hasMany(PlateDetail, {foreignKey: "LocationId"})
-PlateDetail.belongsTo(Location, {foreignKey: "LocatoinId"})
+Location.hasMany(PlateDetail, {htmlForeignKey: "LocationId"})
+PlateDetail.belongsTo(Location, {htmlForeignKey: "LocatoinId"})
 
 export {
     PlateDetail
