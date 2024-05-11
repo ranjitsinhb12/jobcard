@@ -13,7 +13,11 @@ import { options } from "../constants.js";
 
 const generateAccessAndRefreshTokens = async(UserId) => {
     try {
-        const user = await User.findByPk(UserId)
+        const user = await User.findOne({
+            where:{
+                UserId: UserId
+            }
+        })
         const accessToken = jwt.sign(
             {
                 UserId: user.UserId,
@@ -46,7 +50,7 @@ const generateAccessAndRefreshTokens = async(UserId) => {
         return {accessToken, refreshToken}
 
     } catch (error) {
-        throw new ApiError(500, error)
+        throw new ApiError(500, `${error} : Something went wrong while generating refresh and access token`)
     }
 }
 
@@ -275,7 +279,7 @@ const loginUser = asyncHandler(async (req,res)=>{
     })
 
     if(!logedInUser){
-        throw new ApiError(402, "Unauthorized Request!!!")
+        throw new ApiError(403, "Unauthorized Request!!!")
     }
 
     let locationId, locationName
@@ -329,10 +333,11 @@ const logoutUser = asyncHandler(async(req, res) => {
 })
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
+
    const incomingRefreshToken =  req.cookies.refreshToken || req.body.refreshToken
 
    if(!incomingRefreshToken){
-        throw new ApiError(401, "Unauthorized request")
+        throw new ApiError(403, "Unauthorized request")
    }
 
    try {
@@ -344,56 +349,32 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             UserId: decodedToken?.UserId
         },
         attributes:{
-            exclude: ["UserPassword", "createdAt", "updatedAt"]
-        },
-        include:{
-            model: Location,
-            attributes: ["LocationId", "LocationName"],
-            where:{
-                LocationStatus: "A"
-            },
-            through:{
-                attributes: ["UserLocationId"],
-                where:{
-                    [Op.and]: [
-                        {LocationStatus: "A"},
-                        {DefaultLocation: true}
-                    ]
-                }
-            },
-            required: false
+            exclude: ["UserPassword", "createdAt", "updatedAt"],
         }
     })
 
-    console.log(user)
-
-    const locationId = user.Locations[0].LocationId
-    const locationName = user.Locations[0].LocationName
- 
    if(!user){
-     throw new ApiError(401, "Invalid refresh Token")
+     throw new ApiError(403, "Invalid refresh Token")
    }
 
    if(incomingRefreshToken !== user?.RefreshToken){
-     throw new ApiError(401, "Refresh token is expired or used!")
+     throw new ApiError(403, "Refresh token is expired or used!")
    }
  
-   const {newRefreshToken, accessToken} = await generateAccessAndRefreshTokens(user.UserId)
+   const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user.UserId)
  
    return res
    .status(200)
    .cookie("accessToken", accessToken, options)
-   .cookie("refreshToken", newRefreshToken, options)
-   .cookie("locationId", locationId, options)
-   .cookie("locationName", locationName, options)
+   .cookie("refreshToken", refreshToken, options)
    .json(
      new ApiResponse(200,
-         {accessToken:accessToken, refreshToken: newRefreshToken},
+         {accessToken:accessToken, refreshToken: refreshToken},
          "Access token refreshed sucessfully!"
          )
    )
    } catch (error) {
-        throw new ApiError(401, error?.message || "Invalid refresh token!")
+        throw new ApiError(403, error?.message || "Invalid refresh token!")
    }
 
 })
@@ -428,6 +409,35 @@ const currentUser = asyncHandler(async (req, res)=>{
     .status(200)
     .json(new ApiResponse(200, req.user, "Current user fetched sucessfully"))
    
+})
+
+const allUsers = asyncHandler(async (req,res) => {
+    const companyId = req.user.CompanyId
+    const userRole = req.user.RoleId
+    if(!companyId){
+        throw new ApiError(400, "Please select Company first!")
+    }
+
+    if(userRole != 1){
+        throw new ApiError(403, "Unauthorised Request!")
+    }
+
+    const companyAllUsers = await User.findAll({
+        where: {
+            CompanyId: companyId
+        },
+        attributes:{
+            exclude: ["UserPassword", "RefreshToken"]
+        }
+    })
+
+    if(!companyAllUsers){
+        throw new ApiError(400, "Some error has been occured!")
+    }
+    return res.status(200).json( new ApiResponse(200, companyAllUsers, "Sucessfully found All Users"))
+
+    
+    
 })
 
 const updateAccountDetails = asyncHandler(async (req, res)=>{
@@ -651,6 +661,7 @@ export {
     updateAccountDetails,
     updateAvatar,
     loginLocation,
-    userAllLocatons
+    userAllLocatons,
+    allUsers
 
 }
