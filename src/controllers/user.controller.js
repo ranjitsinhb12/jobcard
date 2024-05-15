@@ -309,7 +309,10 @@ const loginUser = asyncHandler(async (req,res)=>{
 
 const logoutUser = asyncHandler(async(req, res) => {
     
-    const user = await User.findByPk(req.user.UserId)
+
+    const user = await User.findOne({
+        where : {UserId: req.user.UserId}
+        })
 
     user.set({
         RefreshToken: undefined
@@ -337,7 +340,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    const incomingRefreshToken =  req.cookies.refreshToken || req.body.refreshToken
 
    if(!incomingRefreshToken){
-        throw new ApiError(403, "Unauthorized request")
+        throw new ApiError(401, "Unauthorized request")
    }
 
    try {
@@ -362,6 +365,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    }
  
    const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user.UserId)
+   //// Added this line and response roles
+   const roles = user?.RoleId
  
    return res
    .status(200)
@@ -369,7 +374,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    .cookie("refreshToken", refreshToken, options)
    .json(
      new ApiResponse(200,
-         {accessToken:accessToken, refreshToken: refreshToken},
+         {accessToken:accessToken, roles: roles },
          "Access token refreshed sucessfully!"
          )
    )
