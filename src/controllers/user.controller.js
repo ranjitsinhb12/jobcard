@@ -56,7 +56,7 @@ const generateAccessAndRefreshTokens = async(UserId) => {
 
 const registerUser = asyncHandler(async (req, res) =>{
     
-    const { FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId, RoleId, CompanyId, IsWorking, PayRates, PayMethod} = req.body
+    const { FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId, RoleId, CompanyId, PayRates, PayMethod} = req.body
 
     // check if not null or empty
     if(
@@ -123,7 +123,7 @@ const registerUser = asyncHandler(async (req, res) =>{
         CompanyId,
         PayMethod,
         PayRates,
-        IsWorking
+        IsWorking: true
     })
 
     // convert strin Location Id to Intiger
@@ -340,7 +340,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    const incomingRefreshToken =  req.cookies.refreshToken || req.body.refreshToken
 
    if(!incomingRefreshToken){
-        throw new ApiError(401, "Unauthorized request")
+        throw new ApiError(403, "Unauthorized request")
    }
 
    try {
@@ -367,6 +367,9 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user.UserId)
    //// Added this line and response roles
    const roles = user?.RoleId
+   const fullName = user?.FullName
+   const avatar = user?.Avatar
+   const logedInUser = user
  
    return res
    .status(200)
@@ -374,7 +377,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    .cookie("refreshToken", refreshToken, options)
    .json(
      new ApiResponse(200,
-         {accessToken:accessToken, roles: roles },
+         { user: logedInUser, accessToken:accessToken, roles: roles },
          "Access token refreshed sucessfully!"
          )
    )
@@ -496,6 +499,7 @@ const updateAvatar = asyncHandler(async (req, res)=>{
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar file is missing")
     }
+    console.log(avatarLocalPath)
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
