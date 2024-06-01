@@ -55,8 +55,10 @@ const generateAccessAndRefreshTokens = async(UserId) => {
 }
 
 const registerUser = asyncHandler(async (req, res) =>{
-    
-    const { FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId, RoleId, CompanyId, PayRates, PayMethod} = req.body
+    const {FullName, UserMobile, UserEmail, UserName, UserPassword, LocationId, RoleId, CompanyId, PayRates, PayMethod} = req.body
+
+
+ 
 
     // check if not null or empty
     if(
@@ -86,35 +88,49 @@ const registerUser = asyncHandler(async (req, res) =>{
     })
 
     if(existedUser){
-        throw new ApiError(400, "User Already Exist!")
+        throw new ApiError(409, "User Already Exist!")
     }
 
     // get Uploaded local image path
-    let avatarLocalPath;
-    if(req.files && Array.isArray(req.files.Avatar) && req.files.Avatar.length > 0){
-        avatarLocalPath = req.files.Avatar[0].path
-    }
+    // let avatarLocalPath;
+    // if(req.file && Array.isArray(req.file.Avatar) && req.file.Avatar.length > 0){
+    //     avatarLocalPath = file.Avatar[0].name
+    // }
+    // console.log(req.data.Avatar)
+    // // if Avatar local path not found
+    // if(!avatarLocalPath){
+    //     throw new ApiError(400, "Avatar image is required!")
+    // }
 
-    // if Avatar local path not found
-    if(!avatarLocalPath){
-        throw new ApiError(400, "Avatar image is required!")
-    }
+    // // Upload to cloudinary
+    // const avatar = await uploadOnCloudinary(avatarLocalPath)
 
-    // Upload to cloudinary
-    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    // // Check if image uploaded sucessfully or not
+    //  if(!avatar){
+    //      throw new ApiError(400, "Avatar image is required!")
+    //  }
 
-    // Check if image uploaded sucessfully or not
-     if(!avatar){
-         throw new ApiError(400, "Avatar image is required!")
-     }
+  
     
      // Has password
     const hashUserPassword = await bcrypt.hash(UserPassword, 10)
 
+    // convert strin Location Id to Intiger
+    let convertedLocationId = []
+
+    for(let i = 0; i < LocationId.length; i++){
+        convertedLocationId.push(parseInt(LocationId[i]))
+    }
+    console.log(convertedLocationId)
+
+    if(convertedLocationId.length <= 0){
+        throw new ApiError(404, "No Location found!")
+    }
+
     // Create User 
     const user = await User.create({
         FullName,
-        Avatar: avatar?.url || "",
+        Avatar: "",
         UserMobile,
         UserEmail: UserEmail.toLowerCase(),
         UserName: UserName.toLowerCase(),
@@ -123,15 +139,9 @@ const registerUser = asyncHandler(async (req, res) =>{
         CompanyId,
         PayMethod,
         PayRates,
-        IsWorking: true
+        IsWorking: true,
+        UserStatus: "A"
     })
-
-    // convert strin Location Id to Intiger
-    let convertedLocationId = []
-
-    for(let i = 0; i < LocationId.length; i++){
-        convertedLocationId.push(parseInt(LocationId[i]))
-    }
 
     // Find Location
     const locations = await Location.findAll({
@@ -140,14 +150,14 @@ const registerUser = asyncHandler(async (req, res) =>{
                 {LocationId: {
                     [Op.in]: convertedLocationId
                 }},
-                {CompanyId: "1"}
+                {CompanyId: CompanyId}
             ]
             
         }
     })
 
     if(!locations){
-        throw new ApiError(400, "Location you are trying to add could not found")
+        throw new ApiError(404, "Location you are trying to add could not found")
     }
     
     // add Location to UserLocation Junction table
@@ -184,7 +194,7 @@ const addRole = asyncHandler(async (req, res) => {
     if(roleId !== 1){
         throw new ApiError(400, "Only Admin can Add roles!!!")
     }
-    const { RoleName } =  req.body
+    const { RoleName, RoleCode } =  req.body
     
     if(RoleName === "" || RoleName === undefined || RoleName === null){
         throw new ApiError(400, "Role Name is required!")
@@ -198,18 +208,56 @@ const addRole = asyncHandler(async (req, res) => {
 
     const role = await Roles.create({
         RoleName: RoleName.toLowerCase(),
+        RoleCode: RoleCode.toLowerCase()
     })
 
-    const createRole = Roles.findByPk(role.RoleId)
+    const createRole = Roles.findOne({where: role.RoleId})
 
     if(!createRole){
         throw new ApiError(500, "Some error happen while creating role!")
     }
 
-    return res.status(201).json(
+    return res.status(200).json(
         new ApiResponse(200, createRole, "Role added successfully")
     )
 
+
+})
+
+const findRole = asyncHandler(async(req, res)=>{
+    const roleId = req?.user?.RoleId
+
+    if(!roleId){
+        throw new ApiError("400", "Unauthorised Request!")
+    }
+
+    const role = await Roles.findOne({
+        where:{
+            RoleId: roleId
+        }
+    })
+    const roleCode = role?.RoleCode
+    if(!roleCode){
+        throw new ApiError(400, "You are not Authorised!")
+    }
+
+    if(roleCode != "0001" && roleCode != "0002" && roleCode != "0003"){
+      throw new ApiError(400, "Unauthorised Request!!!!!")
+    }
+
+    const roles = await Roles.findAll({
+        where:{
+            RoleCode: {
+                [Op.gte]: roleCode
+            }
+        }
+    })
+    if(!roles){
+        throw new ApiError(500, "Contact Admin: Some error has occured!")
+    }
+
+    return res.status(200)
+        .json(new ApiResponse(200, roles, "Sucessfully found all roles"))
 
 })
 
@@ -369,7 +417,16 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    const roles = user?.RoleId
    const fullName = user?.FullName
    const avatar = user?.Avatar
-   const logedInUser = user
+   const logedInUser = {
+        FullName: user?.FullName,
+        UserMobile: user?.UserMobile,
+        UserEmail: user?.UserEmail,
+        UserName: user?.UserName,
+        Avatar: user?.Avatar,
+        CompanyId: user?.CompanyId,
+        RoleId: user?.RoleId,
+
+   }
  
    return res
    .status(200)
@@ -426,7 +483,7 @@ const allUsers = asyncHandler(async (req,res) => {
         throw new ApiError(400, "Please select Company first!")
     }
 
-    if(userRole != 1){
+    if(userRole > 3){
         throw new ApiError(403, "Unauthorised Request!")
     }
 
@@ -499,7 +556,6 @@ const updateAvatar = asyncHandler(async (req, res)=>{
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar file is missing")
     }
-    console.log(avatarLocalPath)
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
@@ -515,18 +571,21 @@ const updateAvatar = asyncHandler(async (req, res)=>{
     })
 
     const avatarUrl = user?.Avatar
-    const urlArray = avatarUrl?.split("/")
-    const oldImage = urlArray[urlArray.length - 1].split(".")
-    const oldImageName = oldImage[0]
-
-    if(oldImageName){
-        try {
-            await deleteFromCloudinary(oldImageName)
-        } catch (error) {
-            throw new ApiError(500, "Got error while deleting old image")
+    if(avatarUrl){
+        const urlArray = avatarUrl?.split("/")
+        const oldImage = urlArray[urlArray.length - 1].split(".")
+        const oldImageName = oldImage[0]
+    
+        if(oldImageName){
+            try {
+                await deleteFromCloudinary(oldImageName)
+            } catch (error) {
+                throw new ApiError(500, "Got error while deleting old image")
+            }
         }
+    
     }
-
+    
     user.Avatar = avatar?.url
     await user.save()
 
@@ -671,6 +730,7 @@ export {
     updateAvatar,
     loginLocation,
     userAllLocatons,
-    allUsers
+    allUsers,
+    findRole
 
 }

@@ -11,7 +11,8 @@ import {
     updateAvatar, 
     loginLocation,
     userAllLocatons,
-    allUsers
+    allUsers,
+    findRole
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
@@ -30,6 +31,8 @@ router.route("/register").post(verifyJWT, verifyManager,
     )
     
 router.route("/addrole").post(verifyJWT, verifyAdmin, addRole)
+
+router.route("/all-roles").get(verifyJWT, verifyManager, findRole)
 
 router.route("/login").post(loginUser)
 

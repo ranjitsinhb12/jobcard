@@ -56,7 +56,7 @@ const Location = sequelise.define("Location", {
   
 }, {timestamps: true});
 
-Company.hasMany(Location, {htmlForeignKey: "CompanyId"})
-Location.belongsTo(Company, {htmlForeignKey: "CompanyId"})
+Company.hasMany(Location, {foreignKey: "CompanyId"})
+Location.belongsTo(Company, {foreignKey: "CompanyId"})
 
 export { Company, Location }

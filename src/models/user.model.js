@@ -118,6 +118,9 @@ const Roles = sequelise.define("Roles",{
     RoleName:{
         type: DataTypes.STRING,
         allowNull: false
+    },
+    RoleCode:{
+        type: DataTypes.STRING,
     }
 },{
     timestamps: false

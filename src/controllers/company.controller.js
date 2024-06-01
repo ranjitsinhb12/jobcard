@@ -169,15 +169,16 @@ const registerLocaton = asyncHandler(async(req, res)=>{
 })
 
 const locationByCompany = asyncHandler(async(req, res)=>{
-    const {CompanyId} = req.body
+    const CompanyId = req?.user?.CompanyId
+    console.log(CompanyId)
     const allLocationByCompany = await Location.findAll({
         where:{
             CompanyId: CompanyId
         }
     })
 
-    res.status(200)
-    .json( new ApiResponse(400, allLocationByCompany, "All location found htmlFor company"))
+    return res.status(200)
+    .json( new ApiResponse(200, allLocationByCompany, "All location found For company"))
 })
 
 const currentLocation = asyncHandler(async (req, res)=>{
