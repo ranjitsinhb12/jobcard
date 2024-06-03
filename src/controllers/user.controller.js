@@ -325,15 +325,15 @@ const loginUser = asyncHandler(async (req,res)=>{
             required: false
         }
     })
-
+   // console.log(JSON.stringify(logedInUser))
     if(!logedInUser){
         throw new ApiError(403, "Unauthorized Request!!!")
     }
 
     let locationId, locationName
     if(logedInUser.Locations.length <= 0){
-        locationId = null
-        locationName = null
+        locationId = ''
+        locationName = ''
     }else{
     locationId = logedInUser.Locations[0].LocationId
     locationName = logedInUser.Locations[0].LocationName
@@ -343,11 +343,9 @@ const loginUser = asyncHandler(async (req,res)=>{
         .status(200)
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
-        .cookie("locationId", locationId, options)
-        .cookie("locationName", locationName, options)
         .json(
             new ApiResponse(200, {
-                user: logedInUser, accessToken
+                user: logedInUser, accessToken, location: locationId
             },
                 "User loged in successfully"
             )
@@ -376,8 +374,6 @@ const logoutUser = asyncHandler(async(req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .clearCookie("locationId", options)
-    .clearCookie("locationName", options)
     .json(new ApiResponse(200, {}, "User logged out sucessfully"))
 
 
@@ -394,18 +390,46 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    try {
     const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
 
-
+    console.log(decodedToken?.UserId)
+    
    const user = await User.findOne({
         where: {
             UserId: decodedToken?.UserId
         },
         attributes:{
             exclude: ["UserPassword", "createdAt", "updatedAt"],
+        },
+        include:{
+            model: Location,
+            attributes: ["LocationId", "LocationName"],
+            where:{
+                LocationStatus: "A"
+            },
+            through:{
+                attributes: ["UserLocationId"],
+                where:{
+                    [Op.and]: [
+                        {LocationStatus: "A"},
+                        {DefaultLocation: true}
+                    ]
+                }
+            },
+            required: false
         }
+
     })
 
    if(!user){
      throw new ApiError(403, "Invalid refresh Token")
+   }
+
+   let locationId, locationName
+   if(user.Locations.length <= 0){
+        locationId = ""
+        locationName = ""
+   }else{
+        locationId = user.Locations[0].LocationId
+        locationName = user.Locations[0].LocationName
    }
 
    if(incomingRefreshToken !== user?.RefreshToken){
@@ -414,9 +438,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
  
    const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user.UserId)
    //// Added this line and response roles
-   const roles = user?.RoleId
-   const fullName = user?.FullName
-   const avatar = user?.Avatar
    const logedInUser = {
         FullName: user?.FullName,
         UserMobile: user?.UserMobile,
@@ -434,7 +455,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    .cookie("refreshToken", refreshToken, options)
    .json(
      new ApiResponse(200,
-         { user: logedInUser, accessToken:accessToken, roles: roles },
+         { user: logedInUser, accessToken:accessToken, location: locationId  },
          "Access token refreshed sucessfully!"
          )
    )
@@ -624,7 +645,7 @@ const userAllLocatons = asyncHandler(async (req, res)=>{
         })
 
         if(!userLocations){
-            throw new ApiError(400, "No Location Found htmlFor your!")
+            throw new ApiError(400, "No Location Found for you!")
         }
 
         locations = userLocations
@@ -717,6 +738,35 @@ const loginLocation = asyncHandler(async(req,res)=>{
 
 })
 
+const setDefaultLocation = asyncHandler( async(req,res) =>{
+    const {loginLocation} = req.body
+    const userId = req.user.UserId
+
+    if(!loginLocation){
+        throw new ApiError(400, "Location is required!")
+    }
+
+    const findLocation = await UserLocation.findOne({
+        where: {
+            [Op.and]: [
+                {LocationId: loginLocation },
+                {UserId: userId}
+            ]
+        }
+    })
+
+    if(!findLocation){
+        throw new ApiError(404, "Could not find Location you are trying to update!")
+    }
+
+    findLocation.DefaultLocation = true
+
+    await findLocation.save()
+
+    return res.status(200).json( new ApiResponse(200, "Sucessfully find locations"))
+
+})
+
 
 export {
     registerUser, 
@@ -731,6 +781,7 @@ export {
     loginLocation,
     userAllLocatons,
     allUsers,
-    findRole
+    findRole,
+    setDefaultLocation
 
 }

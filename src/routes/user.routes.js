@@ -12,7 +12,8 @@ import {
     loginLocation,
     userAllLocatons,
     allUsers,
-    findRole
+    findRole,
+    setDefaultLocation
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
@@ -53,5 +54,9 @@ router.route("/update-avatar").patch(verifyJWT, upload.single("Avatar"), updateA
 router.route("/selected-location").post(verifyJWT, loginLocation )
 
 router.route("/all-locations").get(verifyJWT, userAllLocatons)
+
+router.route("/set-user-location").post(verifyJWT, setDefaultLocation)
+
+
 
 export default router
