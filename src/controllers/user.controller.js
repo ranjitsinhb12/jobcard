@@ -619,6 +619,8 @@ const updateAvatar = asyncHandler(async (req, res)=>{
         }
     })
 
+    console.log(updatedAvatar)
+    
     return res.status(200)
     .json(new ApiResponse(200, updatedAvatar, "Avatar image updated successfully"))
 
