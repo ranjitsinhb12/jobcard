@@ -13,7 +13,8 @@ import {
     userAllLocatons,
     allUsers,
     findRole,
-    setDefaultLocation
+    setDefaultLocation,
+    updateAdminCompanyId
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
@@ -56,6 +57,10 @@ router.route("/selected-location").post(verifyJWT, loginLocation )
 router.route("/all-locations").get(verifyJWT, userAllLocatons)
 
 router.route("/set-user-location").post(verifyJWT, setDefaultLocation)
+
+router.route("/update-company").post(verifyJWT, verifyAdmin, updateAdminCompanyId)
+
+
 
 
 

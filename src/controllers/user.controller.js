@@ -629,10 +629,12 @@ const updateAvatar = asyncHandler(async (req, res)=>{
 const userAllLocatons = asyncHandler(async (req, res)=>{
     const UserId = req.user.UserId
     const UserRole = req.user.RoleId
+    const CompanyId = req.user.CompanyId
+    console.log(CompanyId)
 
     let locations
     if(UserRole === 1){
-        const userLocations = await Company.findAll({
+        const userLocations = await Company.findOne({
             attributes: ["CompanyName", "CompanyLogo", "CompanyId"],
             include: {
                 model: Location,
@@ -642,7 +644,11 @@ const userAllLocatons = asyncHandler(async (req, res)=>{
                 }
             },
             where:{
-                CompanyStatus: "A"
+                [Op.and] : [
+                    {CompanyStatus: "A"},
+                    {CompanyId: CompanyId}
+                ]
+               
             }
         })
 
@@ -652,18 +658,24 @@ const userAllLocatons = asyncHandler(async (req, res)=>{
 
         locations = userLocations
     }else{
-        const userLocations = await User.findOne({
+
+        const userLocations = await Company.findOne({
             where:{
-                UserId: UserId
+                [Op.and] : [
+                    {CompanyId : CompanyId},
+                    {CompanyStatus: "A"}
+                ]
+                
             },
-            attributes: ["FullName"],
-            include:{
+            attributes: ["CompanyName", "CompanyLogo", "CompanyId"],
+            include: {
                 model: Location,
-                attributes:["LocationId", "LocationName"],
-                where: {
+                attributes: ["LocationId", "LocationName"],
+                where:{
                     LocationStatus: "A"
-                },
-                through:{
+                }
+            },
+            through:{
                     attributes: ["UserLocationId"],
                     where:{
                         [Op.and]:[
@@ -673,14 +685,45 @@ const userAllLocatons = asyncHandler(async (req, res)=>{
                         
                     }
                 }
-            }
+            
         })
 
         if(!userLocations){
-            new ApiError(400, "No Location found htmlFor you!!")
+            throw new ApiError(400, "No Location Found for you!")
         }
 
         locations = userLocations
+
+        
+        // const userLocations = await User.findOne({
+        //     where:{
+        //         UserId: UserId
+        //     },
+        //     attributes: ["FullName"],
+        //     include:{
+        //         model: Location,
+        //         attributes:["LocationId", "LocationName"],
+        //         where: {
+        //             LocationStatus: "A"
+        //         },
+        //         through:{
+        //             attributes: ["UserLocationId"],
+        //             where:{
+        //                 [Op.and]:[
+        //                     {UserId: UserId},
+        //                     {LocationStatus: "A"}
+        //                 ]
+                        
+        //             }
+        //         }
+        //     }
+        // })
+
+        // if(!userLocations){
+        //     new ApiError(400, "No Location found htmlFor you!!")
+        // }
+
+        // locations = userLocations
         
     }
 
@@ -785,6 +828,31 @@ const setDefaultLocation = asyncHandler( async(req,res) =>{
 
 })
 
+const updateAdminCompanyId = asyncHandler(async (req, res) => {
+    const {companyId} = req.body
+    const roleId = req.user.RoleId
+    const userId = req.user.UserId
+
+    if(roleId !== 1){
+        throw new ApiError(401, "Unauthorised Request!")
+    }   
+
+    const updateCompany = await User.update(
+        {
+            CompanyId: companyId 
+        },
+        {where:{
+            UserId: userId
+        }}
+    )
+
+        if(!updateCompany){
+            throw new ApiError(500, "Can not update Company Id")
+        }
+
+        return res.status(200).json(200, "Sucessfully find locations")
+    
+})
 
 export {
     registerUser, 
@@ -800,6 +868,7 @@ export {
     userAllLocatons,
     allUsers,
     findRole,
-    setDefaultLocation
+    setDefaultLocation,
+    updateAdminCompanyId
 
 }
