@@ -748,17 +748,33 @@ const setDefaultLocation = asyncHandler( async(req,res) =>{
         throw new ApiError(400, "Location is required!")
     }
 
+    const updateLocation = await UserLocation.update(
+        {DefaultLocation: false},
+        {
+            where: {
+                [Op.and]: [
+                    {UserId: userId},
+                ]
+            }
+        }
+    )
+
+    if(!updateLocation){
+        throw new ApiError(500, "Can not update Location! Try again later!")
+    }
+
     const findLocation = await UserLocation.findOne({
         where: {
             [Op.and]: [
-                {LocationId: loginLocation },
-                {UserId: userId}
+                {UserId: userId},
+                {LocationId: loginLocation},
+                {LocationStatus: "A"}
             ]
         }
     })
 
     if(!findLocation){
-        throw new ApiError(404, "Could not find Location you are trying to update!")
+        throw new ApiError(400, "Could not found location you are tryin to update!")
     }
 
     findLocation.DefaultLocation = true
