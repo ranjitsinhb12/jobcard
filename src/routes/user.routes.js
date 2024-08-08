@@ -14,7 +14,9 @@ import {
     allUsers,
     findRole,
     setDefaultLocation,
-    updateAdminCompanyId
+    updateCompanyId,
+    allocateAllLocationToAdmin,
+    userCompany
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
@@ -33,6 +35,9 @@ router.route("/register").post(verifyJWT, verifyManager,
     )
     
 router.route("/addrole").post(verifyJWT, verifyAdmin, addRole)
+
+router.route("/allocate-admin-location").post(verifyJWT, verifyAdmin, allocateAllLocationToAdmin)
+
 
 router.route("/all-roles").get(verifyJWT, verifyManager, findRole)
 
@@ -54,11 +59,13 @@ router.route("/update-avatar").patch(verifyJWT, upload.single("Avatar"), updateA
 
 router.route("/selected-location").post(verifyJWT, loginLocation )
 
+router.route("/all-companies").get(verifyJWT, userCompany)
+
 router.route("/all-locations").get(verifyJWT, userAllLocatons)
 
 router.route("/set-user-location").post(verifyJWT, setDefaultLocation)
 
-router.route("/update-company").post(verifyJWT, verifyAdmin, updateAdminCompanyId)
+router.route("/update-company").post(verifyJWT, verifyAdmin, updateCompanyId)
 
 
 

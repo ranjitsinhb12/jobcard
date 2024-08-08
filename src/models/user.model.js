@@ -67,6 +67,18 @@ const User = sequelise.define("User", {
     timestamps: true
 });
 
+const UserCompany = sequelise.define("UserCompany", {
+    UserCompanyId: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+   },
+   UserCompanyStatus: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+   }
+}, {timestamps: true})
+
 User.generateAccessToken = function(UserId){
     return jwt.sign(
         {
@@ -136,6 +148,16 @@ Location.belongsToMany(User, {
 })
 User.belongsToMany(Location,{ 
     through: UserLocation,
+    foreignKey: "UserId"
+})
+
+Company.belongsToMany(User, {
+    through: UserCompany,
+    foreignKey: "CompanyId"
+})
+
+User.belongsToMany(Company, {
+    through: UserCompany,
     foreignKey: "UserId"
 })
 

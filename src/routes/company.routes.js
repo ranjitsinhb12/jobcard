@@ -16,12 +16,6 @@ import { verifyAdmin } from "../middlewares/role.middleware.js";
 const router = Router()
 
 router.route("/addcompany").post(verifyJWT, verifyAdmin,
-    upload.fields([
-        {
-            name: "CompanyLogo",
-            maxCount: 1
-        }
-    ]),
     registerCompany
     )
 

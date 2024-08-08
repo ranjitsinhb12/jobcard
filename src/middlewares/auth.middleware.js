@@ -7,16 +7,18 @@ import { Op } from "sequelize";
 const verifyJWT = asyncHandler(async (req, res, next) => {
     try {
        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
-       const location = req.cookies?.locationId || req.header("Authorization")?.replace("Bearer", "")
+       //const location = req.cookies?.locationId || req.header("Authorization")?.replace("Bearer", "")
 
-       if(!token){
+       if(!token || token == "undefined" || token == null){
         throw new ApiError(401, "Unauthorized request!!!!")
        }
 
+       console.log(`Token: ${typeof token}`)
+
        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
 
-       if(decodedToken){
-        console.log(decodedToken.UserId)
+       if(!decodedToken){
+        throw new ApiError(401, "Unauthorized request!!!!")
        }
 
 
@@ -33,7 +35,7 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
     if(!user){
         throw new ApiError(403, "Invalid Access Token!!!!!!!!")
     }
-    console.log(user)
+
     req.user = user;
     next()
     

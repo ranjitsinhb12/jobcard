@@ -5,9 +5,12 @@ import {Company, Location} from "../models/company.model.js";
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
-import { Op } from "sequelize";
+import { Op, and, where } from "sequelize";
 import bcrypt from "bcrypt"
 import { options } from "../constants.js";
+import {sequelise} from "../db/index.js";
+import { Sequelize } from "sequelize";
+
 
 
 
@@ -121,7 +124,7 @@ const registerUser = asyncHandler(async (req, res) =>{
     for(let i = 0; i < LocationId.length; i++){
         convertedLocationId.push(parseInt(LocationId[i]))
     }
-    console.log(convertedLocationId)
+    //console.log(convertedLocationId)
 
     if(convertedLocationId.length <= 0){
         throw new ApiError(404, "No Location found!")
@@ -282,7 +285,7 @@ const loginUser = asyncHandler(async (req,res)=>{
             IsWorking: true
         };
     }
-    console.log(searchValue)
+    //console.log(searchValue)
     const user = await User.findOne({
         where: searchValue
      })
@@ -311,34 +314,31 @@ const loginUser = asyncHandler(async (req,res)=>{
             model: Location,
             attributes: ["LocationId", "LocationName"],
             where:{
-                LocationStatus: "A"
+                LocationStatus: "A",
+                CompanyId: user.CompanyId
             },
             through:{
                 attributes: ["UserLocationId"],
                 where:{
                     [Op.and]: [
                         {LocationStatus: "A"},
-                        {DefaultLocation: true}
+                        {DefaultLocation: true},
                     ]
                 }
             },
             required: false
         }
     })
-   // console.log(JSON.stringify(logedInUser))
     if(!logedInUser){
         throw new ApiError(403, "Unauthorized Request!!!")
     }
-
     let locationId, locationName
-    if(logedInUser.Locations.length <= 0){
-        locationId = ''
-        locationName = ''
-    }else{
-    locationId = logedInUser.Locations[0].LocationId
-    locationName = logedInUser.Locations[0].LocationName
+    if(logedInUser.Locations.length > 0){
+        locationId = logedInUser.Locations[0].LocationId
+        locationName = logedInUser.Locations[0].LocationName
     }
     
+    console.log(locationName)
     return res
         .status(200)
         .cookie("accessToken", accessToken, options)
@@ -390,7 +390,22 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
    try {
     const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
 
-    console.log(decodedToken?.UserId)
+    //console.log(`Company Id: ${JSON.stringify(decodedToken)}`)
+
+    const findUserFirst = await User.findOne({
+        where: {
+            UserId: decodedToken?.UserId
+        },
+        attributes:{
+            exclude: ["UserPassword", "createdAt", "updatedAt"],
+        }
+    })
+
+    if(!findUserFirst){
+        throw new ApiError(403, "Invalid refresh Token")
+    }
+
+    const companyId = findUserFirst?.CompanyId
     
    const user = await User.findOne({
         where: {
@@ -403,7 +418,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             model: Location,
             attributes: ["LocationId", "LocationName"],
             where:{
-                LocationStatus: "A"
+                LocationStatus: "A",
+                CompanyId: companyId
             },
             through:{
                 attributes: ["UserLocationId"],
@@ -619,7 +635,7 @@ const updateAvatar = asyncHandler(async (req, res)=>{
         }
     })
 
-    console.log(updatedAvatar)
+    //console.log(updatedAvatar)
     
     return res.status(200)
     .json(new ApiResponse(200, updatedAvatar, "Avatar image updated successfully"))
@@ -628,109 +644,44 @@ const updateAvatar = asyncHandler(async (req, res)=>{
 
 const userAllLocatons = asyncHandler(async (req, res)=>{
     const UserId = req.user.UserId
-    const UserRole = req.user.RoleId
     const CompanyId = req.user.CompanyId
-    console.log(CompanyId)
 
-    let locations
-    if(UserRole === 1){
-        const userLocations = await Company.findOne({
-            attributes: ["CompanyName", "CompanyLogo", "CompanyId"],
-            include: {
-                model: Location,
-                attributes: ["LocationId", "LocationName"],
-                where:{
-                    LocationStatus: "A"
-                }
-            },
+    const userLocations = await User.findAll({
+        attributes: ["FullName"],
+        where:{
+            UserStatus: "A",
+            UserId: UserId
+        },
+        include:{
+            model: Location,
+            attributes: ["LocationId", "LocationName"],
             where:{
-                [Op.and] : [
-                    {CompanyStatus: "A"},
-                    {CompanyId: CompanyId}
+                  LocationStatus: "A",
+                  CompanyId: CompanyId
+                 },
+        },
+        through:{
+            attributes: ["UserLocationId", "DefaultLocation"],
+            where:{
+                [Op.and]:[
+                {UserId: UserId},
+                {CompanyId: CompanyId},
+                {LocationStatus: "A"}
                 ]
-               
+                            
             }
-        })
-
-        if(!userLocations){
-            throw new ApiError(400, "No Location Found for you!")
         }
+    })
 
-        locations = userLocations
-    }else{
-
-        const userLocations = await Company.findOne({
-            where:{
-                [Op.and] : [
-                    {CompanyId : CompanyId},
-                    {CompanyStatus: "A"}
-                ]
-                
-            },
-            attributes: ["CompanyName", "CompanyLogo", "CompanyId"],
-            include: {
-                model: Location,
-                attributes: ["LocationId", "LocationName"],
-                where:{
-                    LocationStatus: "A"
-                }
-            },
-            through:{
-                    attributes: ["UserLocationId"],
-                    where:{
-                        [Op.and]:[
-                            {UserId: UserId},
-                            {LocationStatus: "A"}
-                        ]
-                        
-                    }
-                }
-            
-        })
-
-        if(!userLocations){
-            throw new ApiError(400, "No Location Found for you!")
-        }
-
-        locations = userLocations
-
-        
-        // const userLocations = await User.findOne({
-        //     where:{
-        //         UserId: UserId
-        //     },
-        //     attributes: ["FullName"],
-        //     include:{
-        //         model: Location,
-        //         attributes:["LocationId", "LocationName"],
-        //         where: {
-        //             LocationStatus: "A"
-        //         },
-        //         through:{
-        //             attributes: ["UserLocationId"],
-        //             where:{
-        //                 [Op.and]:[
-        //                     {UserId: UserId},
-        //                     {LocationStatus: "A"}
-        //                 ]
-                        
-        //             }
-        //         }
-        //     }
-        // })
-
-        // if(!userLocations){
-        //     new ApiError(400, "No Location found htmlFor you!!")
-        // }
-
-        // locations = userLocations
-        
+    if(!userLocations){
+        throw new ApiError(400, "No Location Found for you!")
     }
 
-    return res.status(200).json( new ApiResponse(200, locations, "Sucessfully find locations"))
+    return res.status(200).json( new ApiResponse(200, userLocations, "Sucessfully find locations"))
 
 
 })
+
 const loginLocation = asyncHandler(async(req,res)=>{
     // Receive store data from body
     // check if store Id maches with user
@@ -785,22 +736,35 @@ const loginLocation = asyncHandler(async(req,res)=>{
 
 const setDefaultLocation = asyncHandler( async(req,res) =>{
     const {loginLocation} = req.body
+    const {companyId} = req.body
     const userId = req.user.UserId
+    const roleId = req.user.RoleId
 
+    //// Check if location is send by user
     if(!loginLocation){
         throw new ApiError(400, "Location is required!")
     }
 
-    const updateLocation = await UserLocation.update(
-        {DefaultLocation: false},
-        {
-            where: {
-                [Op.and]: [
-                    {UserId: userId},
-                ]
-            }
+    /// Find All location from the selected company
+    const findLocations = await Location.findAll({
+        attributes: ["LocationId"],
+        where:{
+            [Op.and]:[
+                {CompanyId: companyId},
+                {LocationStatus: "A"}
+            ]
+            
         }
-    )
+    })
+    /// If get error when finding location
+    if(!findLocations){
+        throw new ApiError(400, "Location Not found")
+    }
+
+    const updateLocation = await sequelise.query(`UPDATE UserLocations
+                    SET DefaultLocation = false
+                    WHERE UserId = ${userId}  and 
+                    LocationId IN (SELECT LocationId FROM Locations WHERE CompanyId = ${companyId})`)
 
     if(!updateLocation){
         throw new ApiError(500, "Can not update Location! Try again later!")
@@ -817,25 +781,45 @@ const setDefaultLocation = asyncHandler( async(req,res) =>{
     })
 
     if(!findLocation){
-        throw new ApiError(400, "Could not found location you are tryin to update!")
+            throw new ApiError(400, "Could not found location you are tryin to update!")
     }
 
     findLocation.DefaultLocation = true
 
     await findLocation.save()
 
-    return res.status(200).json( new ApiResponse(200, "Sucessfully find locations"))
+    return res.status(200).json( new ApiResponse(200, findLocation, "Sucessfully Location Set locations"))
 
 })
 
-const updateAdminCompanyId = asyncHandler(async (req, res) => {
+const updateCompanyId = asyncHandler(async (req, res) => {
     const {companyId} = req.body
-    const roleId = req.user.RoleId
     const userId = req.user.UserId
 
-    if(roleId !== 1){
-        throw new ApiError(401, "Unauthorised Request!")
-    }   
+    const findUserCompany = await Company.findOne({
+        attributes: ["CompanyName"],
+        include: {
+            model: User,
+            attributes: ["FullName"],
+            through:{
+                attributes: ["UserCompanyId"],
+                where:{
+                    [Op.and]: [
+                        {UserId: userId},
+                        {CompanyId: companyId}
+                    ]
+                }
+            }
+        }
+    })
+
+    if(!findUserCompany){
+        throw new ApiError(500, "Can not find company you want to change")
+    }
+
+    if(findUserCompany?.length <= 0){
+        throw new ApiError(500, "You are not allocated with this company")
+    }
 
     const updateCompany = await User.update(
         {
@@ -854,6 +838,85 @@ const updateAdminCompanyId = asyncHandler(async (req, res) => {
     
 })
 
+const allocateAllLocationToAdmin = asyncHandler(async(req,res)=>{
+    const companyId = req.body.CompanyId
+    const roleId = req.user.RoleId
+    const userId = req.user.UserId
+
+    // Check if user is Admin
+    if(!roleId === 1){
+        throw new ApiError(403, "Unauthorised Request!")
+    }
+
+    /// Find location base on company
+    const locations = await Location.findAll({
+        where:{
+            CompanyId: companyId
+        }
+    })
+
+    /// Check if Location found or not
+    if(!locations){
+        throw new ApiError(404, "No Location Found")
+    }
+
+    //console.log(locations?.LocationId)
+    const locationsWithUserId = locations?.LocationId?.map((locationId)=>(
+        { LocationId: locationId, UserId: userId}
+     ))
+
+     //console.log(locationsWithUserId)
+    // add Location to UserLocation Junction table
+    const addedLocation = await UserLocation?.bulkCreate(locationsWithUserId)
+
+    if(!addedLocation){
+        throw new ApiError(500, "Can not add Location to user!")
+    }
+
+    return res.status(201).json(
+        new ApiResponse(200, "Locations allocated to Admin")
+    ) 
+})
+
+const userCompany = asyncHandler(async(req,res)=>{
+    const userId = req.user.UserId
+
+    if(!userId){
+        throw new ApiError(401, "You are not loged in")
+    }
+
+    const foundCompanies = await Company.findAll({
+        attribute: ["CompanyId", "CompanyName"],
+        where: {
+            CompanyStatus: "A"
+        },
+        include:{
+            model: User,
+            attributes: ["FullName"],
+            where: {
+                [Op.and]: {
+                    UserId: userId,
+                    UserStatus: "A"
+                }
+            },
+            through:{
+                attributes: ["UserCompanyId"],
+                where: {
+                    UserId: userId
+                }
+            }
+        }
+
+    })
+
+    if(!foundCompanies){
+        throw new ApiError(500, "Can not found any company")
+    }
+
+    res.status(200)
+   .json( new ApiResponse(200, foundCompanies, "All company found sucessfully!"))
+})
+
 export {
     registerUser, 
     addRole, 
@@ -869,6 +932,8 @@ export {
     allUsers,
     findRole,
     setDefaultLocation,
-    updateAdminCompanyId
+    updateCompanyId,
+    allocateAllLocationToAdmin,
+    userCompany
 
 }

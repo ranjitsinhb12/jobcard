@@ -11,7 +11,7 @@ const registerCompany = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Unauthorised Request, Only admin can Add company!")
     }
     const { CompanyName} = req.body
-    console.log(admin)
+
     // empty check htmlFor company Name
     if(CompanyName.trim() === ""){
         throw new ApiError(400, "Company name is required!")
@@ -22,30 +22,35 @@ const registerCompany = asyncHandler(async (req, res) => {
 
     // ir company exist give error
     if(existedCompany){
-        throw new ApiError(409, "Company already Exist!")
+        return res.status(201).json(
+            new ApiResponse(201, existedCompany, "Company Selected Sucessfully!")
+        )
     }
 
     
     // check logo path 
-    let logoLocalPath;
-    if(req.files && Array.isArray(req.files.CompanyLogo) && req.files.CompanyLogo.length > 0){
-        logoLocalPath = req.files.CompanyLogo[0].path
-    }
+    // let logoLocalPath;
+    // if(req.files && Array.isArray(req.files.CompanyLogo) && req.files.CompanyLogo.length > 0){
+    //     logoLocalPath = req.files.CompanyLogo[0].path
+    // }
  
-    if(!logoLocalPath){
-        throw new ApiError(500, "Can't find image or image is curpt!")
-    }
+    // if(!logoLocalPath){
+    //     throw new ApiError(500, "Can't find image or image is curpt!")
+    // }
 
-    // uploade image in cloudinary
-    const uploadedLogo = await uploadOnCloudinary(logoLocalPath)
+    // // uploade image in cloudinary
+    // const uploadedLogo = await uploadOnCloudinary(logoLocalPath)
 
     const company = await Company.create({
         CompanyName,
-        CompanyLogo: uploadedLogo?.url || ""
-
+        //CompanyLogo: uploadedLogo?.url || ""
     })
 
-    const createCompany = await Company.findByPk(company.CompanyId)
+    const createCompany = await Company.findOne({
+        where:{
+            CompanyId: company.CompanyId
+        }
+    })
 
     if(!createCompany){
         throw new ApiError(500, "Something went wrong while registring Company")
@@ -128,33 +133,31 @@ const registerLocaton = asyncHandler(async(req, res)=>{
     if(roleId !== 1){
         throw new ApiError(400, "Unauthorised Request, Only admin can register location!")
     }
-    const {  LocationName, LocationAddress, LocationContact, LocationEmail, LocationABN, CompanyId} = req.body
+    const companyId = req.body?.CompanyId
+    const locations = req.body?.locations
+    // console.log(companyId)
+    // console.log(locations)
 
-    if(CompanyId === "" || CompanyId <= 0 || CompanyId === undefined || CompanyId === null){
+    if(!companyId){
         throw new ApiError(400, "Please select company to add Locations!")
     }
 
-    const checkEmpty = [LocationName, LocationABN, LocationAddress].some((field) => field?.trim() === "");
-
-    if( checkEmpty){
-        throw new ApiError(400, "Name, ABN and Address is required field!")
+    if( !locations?.length){
+        throw new ApiError(400, "Name, ABN, Mobile and Address is required field!")
     }
 
-    const existedLocation = await Location.findOne({where: {locationName: LocationName}})
+    // const existedLocation = await Location.findOne({where: {locationName: LocationName}})
 
-    if(existedLocation){
-        throw new ApiError(401, "Location already exist!")
-    }
+    // if(existedLocation){
+    //     throw new ApiError(401, "Location already exist!")
+    // }
 
-    const location = await Location.create({
-        LocationName: LocationName,
-        LocationAddress: LocationAddress,
-        LocationABN: LocationABN,
-        LocationContact: LocationContact,
-        LocationEmail: LocationEmail,
-        CompanyId: 1
+    const locationsWithCompany = locations.map((i)=>(
+       { ...i, CompanyId: companyId}
+    ))
+    console.log(locationsWithCompany)
 
-    })
+    const location = await Location.bulkCreate(locationsWithCompany)
 
     if(!location){
         throw new ApiError(400, "Can not add Location, Pleaes try later!")
